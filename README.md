@@ -22,7 +22,3 @@ Usage: MySQLMonitor [options]
 
 **Demo**
 ![](./images/demo.png)
-
-
-## TODO
-发现问题，
