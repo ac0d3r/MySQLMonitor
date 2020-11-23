@@ -5,7 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -34,6 +37,8 @@ const (
 )
 
 var (
+	sigs = make(chan os.Signal, 1)
+
 	db         *sql.DB
 	limitNum   int = 1
 	lastone    time.Time
@@ -124,17 +129,31 @@ func main() {
 	}
 	banner()
 	initDB()
-	defer db.Close()
+
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	defer func() {
+		fmt.Println("Bye!")
+		db.Close()
+	}()
 
 	_, err := db.Exec(setLogSQL)
 	if err != nil {
 		log.Fatalf("exec %s failed: %q", setLogSQL, err)
 	}
 	checkLogOutPut()
+
 	for {
-		hasnew := printExecLog()
-		if !hasnew {
-			time.Sleep(time.Millisecond * 150)
+		select {
+		case <-sigs:
+			goto BREAK
+		default:
+			hasnew := printExecLog()
+			if !hasnew {
+				time.Sleep(time.Millisecond * 150)
+			}
 		}
+		continue
+	BREAK:
+		break
 	}
 }
