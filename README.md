@@ -1,6 +1,8 @@
 # MySQLMonitor
 
-最近在学习 SQL 注入，发现 [MySQLMonitor](https://github.com/TheKingOfDuck/MySQLMonitor)项目用 golang 也写了个。
+最近在学习 SQL 注入，发现 [MySQLMonitor](https://github.com/TheKingOfDuck/MySQLMonitor)项目。
+
+用 golang 完善了下：判断 `event_time` 等。
 
 [bin/MySQLMonitor](./bin/MySQLMonitor) 可在 macos 下运行，其他系统自行编译。
 

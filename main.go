@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -29,15 +30,18 @@ const (
 	setLogSQL            = "SET GLOBAL general_log='ON'"
 	showLogOutPutTypeSQL = "SHOW VARIABLES LIKE 'log_output'"
 	setLogOutPutTypeSQL  = "SET GLOBAL log_output=?"
-	getExecLogSQL        = `SELECT event_time, user_host, argument FROM mysql.general_log WHERE command_type ="Query" OR command_type ="Execute" ORDER BY event_time DESC LIMIT 2`
+	getExecLogSQL        = `SELECT event_time, user_host, argument FROM mysql.general_log WHERE command_type ="Query" OR command_type ="Execute" ORDER BY event_time DESC LIMIT ?`
 )
 
 var (
-	db       *sql.DB
-	flagHelp = flag.Bool("h", false, "Shows usage options.")
-	flagHost = flag.String("host", "localhost", "Bind mysql host.")
-	flagPort = flag.Uint("port", 3306, "Bind mysql port.")
+	db         *sql.DB
+	limitNum   int = 1
+	lastone    time.Time
+	getExecLog = getExecLogSQL[:len(getExecLogSQL)-1]
 
+	flagHelp   = flag.Bool("h", false, "Shows usage options.")
+	flagHost   = flag.String("host", "localhost", "Bind mysql host.")
+	flagPort   = flag.Uint("port", 3306, "Bind mysql port.")
 	flagUser   = flag.String("user", "", "Select mysql username.")
 	flagPasswd = flag.String("passwd", "", "Input mysql password.")
 )
@@ -54,6 +58,14 @@ func initDB() {
 	}
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(10)
+}
+
+func formatDatetime(timestr string) (time.Time, error) {
+	t, err := time.Parse("2006-01-02 15:04:05.000000", timestr)
+	if err != nil {
+		return t, err
+	}
+	return t, nil
 }
 
 func checkLogOutPut() {
@@ -73,7 +85,7 @@ func checkLogOutPut() {
 
 func printExecLog() bool {
 	var hasnew bool
-	rows, err := db.Query(getExecLogSQL)
+	rows, err := db.Query(getExecLogSQL, limitNum)
 	if err != nil {
 		log.Fatalf("exec %s failed: %q", getExecLogSQL, err)
 	}
@@ -83,44 +95,24 @@ func printExecLog() bool {
 		if err != nil {
 			log.Fatalf("printExecLog rows.Scan failed: %q", err)
 		}
-		if elog.Argument != getExecLogSQL {
-			hasnew = true
-			log.Printf("[exec] %s\n", elog.Argument)
+		eventTime, err := formatDatetime(elog.EventTime)
+		if err != nil {
+			log.Fatalf("printExecLog time.format %s error: %q", elog.EventTime, err)
+			continue
+		}
+		// 初始化 lastone
+		if limitNum == 1 {
+			lastone = eventTime
+			limitNum = 5
+		} else if eventTime.After(lastone) {
+			if !strings.Contains(elog.Argument, getExecLog) {
+				hasnew = true
+				lastone = eventTime
+				fmt.Printf("[%s] - exec: %s\n", eventTime.Format("01-02 15:04:05"), elog.Argument)
+			}
 		}
 	}
 	return hasnew
-}
-
-func fetchRows(rows *sql.Rows) {
-	columns, err := rows.Columns()
-	if err != nil {
-		panic(err.Error())
-	}
-	values := make([]sql.RawBytes, len(columns))
-	scanArgs := make([]interface{}, len(values))
-	for i := range values {
-		scanArgs[i] = &values[i]
-	}
-	// Fetch rows
-	for rows.Next() {
-		err = rows.Scan(scanArgs...)
-		if err != nil {
-			panic(err.Error())
-		}
-		var value string
-		for i, col := range values {
-			if col == nil {
-				value = "NULL"
-			} else {
-				value = string(col)
-			}
-			// handlerFunc(columns[i])
-			fmt.Println(columns[i], value)
-		}
-	}
-	if err = rows.Err(); err != nil {
-		panic(err.Error()) // proper error handling instead of panic in your app
-	}
 }
 
 func main() {
@@ -142,7 +134,7 @@ func main() {
 	for {
 		hasnew := printExecLog()
 		if !hasnew {
-			time.Sleep(time.Millisecond * 100)
+			time.Sleep(time.Millisecond * 150)
 		}
 	}
 }
