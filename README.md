@@ -1,12 +1,11 @@
-# MySQLMonitor
+# sqli-tools
 
-最近在学习 SQL 注入，发现 [MySQLMonitor](https://github.com/TheKingOfDuck/MySQLMonitor)项目。
+编写整理如下工具💻：
 
-用 golang 完善了下：判断 `event_time` 等。
+## MySQLMonitor
+> 监控 MySQL 查询、执行语句...
 
-[bin/MySQLMonitor](./bin/MySQLMonitor) 可在 macos 下运行，其他系统自行编译。
-
-## Usage
+**Usage:**
 ```bash
 $ ./bin/MySQLMonitor 
 Usage: MySQLMonitor [options]
@@ -21,6 +20,3 @@ Usage: MySQLMonitor [options]
   -passwd string
         Input mysql password.
 ```
-
-**Demo**
-![](./images/demo.png)

@@ -1,4 +1,4 @@
-module MySQLMonitor
+module github.com/Buzz2d0/SQLITools
 
 go 1.15
 
