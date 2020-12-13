@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/Buzz2d0/SecTools/pkg"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -37,7 +37,7 @@ const (
 )
 
 var (
-	sigs = make(chan os.Signal, 1)
+	sigs <-chan os.Signal
 
 	db         *sql.DB
 	limitNum   int = 1
@@ -52,7 +52,7 @@ var (
 )
 
 func banner() {
-	fmt.Println(`Starting monitor MySQL Query log...`)
+	fmt.Println(`Start monitoring MySQL execution log...`)
 }
 
 func initDB() {
@@ -65,42 +65,44 @@ func initDB() {
 	db.SetMaxIdleConns(10)
 }
 
-func formatDatetime(timestr string) (time.Time, error) {
-	t, err := time.Parse("2006-01-02 15:04:05.000000", timestr)
-	if err != nil {
-		return t, err
-	}
-	return t, nil
-}
-
-func checkLogOutPut() {
-	var logout logOutPut
-	row := db.QueryRow(showLogOutPutTypeSQL)
-	err := row.Scan(&logout.VariableName, &logout.Value)
+func checkMySQLLogOutPut() {
+	var (
+		logout logOutPut
+		row    *sql.Row
+		err    error
+	)
+	row = db.QueryRow(showLogOutPutTypeSQL)
+	err = row.Scan(&logout.VariableName, &logout.Value)
 	if err != nil {
 		log.Fatalf("exec %s failed: %q", showLogOutPutTypeSQL, err)
 	}
 	if logout.Value != string(tableLogOutPut) {
-		_, err := db.Exec(setLogOutPutTypeSQL, tableLogOutPut)
+		_, err = db.Exec(setLogOutPutTypeSQL, tableLogOutPut)
 		if err != nil {
 			log.Fatalf("exec %s failed: %q", setLogOutPutTypeSQL, err)
 		}
 	}
 }
 
-func printExecLog() bool {
-	var hasnew bool
-	rows, err := db.Query(getExecLogSQL, limitNum)
+func printMySQLExecLog() bool {
+	var (
+		hasnew    bool
+		eventTime time.Time
+		rows      *sql.Rows
+		err       error
+	)
+
+	rows, err = db.Query(getExecLogSQL, limitNum)
 	if err != nil {
 		log.Fatalf("exec %s failed: %q", getExecLogSQL, err)
 	}
 	for rows.Next() {
 		var elog execLog
-		err := rows.Scan(&elog.EventTime, &elog.UserHost, &elog.Argument)
+		err = rows.Scan(&elog.EventTime, &elog.UserHost, &elog.Argument)
 		if err != nil {
 			log.Fatalf("printExecLog rows.Scan failed: %q", err)
 		}
-		eventTime, err := formatDatetime(elog.EventTime)
+		eventTime, err = pkg.FormatDatetime(elog.EventTime, "2006-01-02 15:04:05.000000")
 		if err != nil {
 			log.Fatalf("printExecLog time.format %s error: %q", elog.EventTime, err)
 			continue
@@ -121,6 +123,10 @@ func printExecLog() bool {
 }
 
 func main() {
+	var (
+		hasnew bool
+		err    error
+	)
 	flag.Parse()
 	if *flagHelp || *flagUser == "" {
 		fmt.Printf("Usage: MySQLMonitor [options]\n\n")
@@ -130,24 +136,24 @@ func main() {
 	banner()
 	initDB()
 
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	sigs = pkg.RegisterSignal(syscall.SIGINT, syscall.SIGTERM)
 	defer func() {
-		fmt.Println("Bye!")
+		fmt.Println("\nBye hacker :)")
 		db.Close()
 	}()
 
-	_, err := db.Exec(setLogSQL)
+	_, err = db.Exec(setLogSQL)
 	if err != nil {
 		log.Fatalf("exec %s failed: %q", setLogSQL, err)
 	}
-	checkLogOutPut()
+	checkMySQLLogOutPut()
 
 	for {
 		select {
 		case <-sigs:
 			goto BREAK
 		default:
-			hasnew := printExecLog()
+			hasnew = printMySQLExecLog()
 			if !hasnew {
 				time.Sleep(time.Millisecond * 150)
 			}

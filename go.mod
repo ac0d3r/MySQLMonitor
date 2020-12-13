@@ -1,4 +1,4 @@
-module github.com/Buzz2d0/SQLITools
+module github.com/Buzz2d0/SecTools
 
 go 1.15
 

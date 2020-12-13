@@ -1,7 +1,4 @@
-# sqli-tools
-
-编写整理如下工具💻：
-
+# sec-tools
 ## MySQLMonitor
 > 监控 MySQL 查询、执行语句...
 
