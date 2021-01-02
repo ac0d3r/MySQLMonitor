@@ -2,8 +2,7 @@ package pkg
 
 import "time"
 
-// FormatDatetime 安装 format 格式分析 timestr
-func FormatDatetime(timestr string, format string) (time.Time, error) {
+func Parse2Time(timestr string, format string) (time.Time, error) {
 	var (
 		t   time.Time
 		err error

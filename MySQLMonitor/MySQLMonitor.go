@@ -102,7 +102,7 @@ func printMySQLExecLog() bool {
 		if err != nil {
 			log.Fatalf("printExecLog rows.Scan failed: %q", err)
 		}
-		eventTime, err = pkg.FormatDatetime(elog.EventTime, "2006-01-02 15:04:05.000000")
+		eventTime, err = pkg.Parse2Time(elog.EventTime, "2006-01-02 15:04:05.000000")
 		if err != nil {
 			log.Fatalf("printExecLog time.format %s error: %q", elog.EventTime, err)
 			continue
