@@ -1,6 +1,6 @@
 # sec-tools
 ## MySQLMonitor
-> 监控 MySQL 查询、执行语句...
+> 监控 MySQL 并实时显示程序执行过的语句
 
 **Usage:**
 ```bash
@@ -19,7 +19,7 @@ Usage: MySQLMonitor [options]
 ```
 
 ## http.server
-> 创建简单的 HTTP 服务用于访问当前目录下的文件
+> 创建简单的 HTTP 服务用于访问指定目录下的文件(类似于：`python3 -m http.server`)
 
 **Usage:**
 ```bash
