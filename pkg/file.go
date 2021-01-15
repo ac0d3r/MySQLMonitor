@@ -14,8 +14,8 @@ func PathExist(_path string) bool {
 	return true
 }
 
-// CopyFile 硬链接方式拷贝文件
-func CopyFile(oldname, newname string) error {
+// CopyFileHardLink 硬链接方式拷贝文件
+func CopyFileHardLink(oldname, newname string) error {
 	if !PathExist(oldname) {
 		return fmt.Errorf("Not Found %s", oldname)
 	}

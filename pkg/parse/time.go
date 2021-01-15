@@ -1,8 +1,9 @@
-package pkg
+package parse
 
 import "time"
 
-func Parse2Time(timestr string, format string) (time.Time, error) {
+// Str2Time 根据 `format` 分析 time
+func Str2Time(timestr string, format string) (time.Time, error) {
 	var (
 		t   time.Time
 		err error

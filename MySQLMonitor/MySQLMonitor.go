@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Buzz2d0/SecTools/pkg"
+	"github.com/Buzz2d0/SecTools/pkg/parse"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -102,7 +103,7 @@ func printMySQLExecLog() bool {
 		if err != nil {
 			log.Fatalf("printExecLog rows.Scan failed: %q", err)
 		}
-		eventTime, err = pkg.Parse2Time(elog.EventTime, "2006-01-02 15:04:05.000000")
+		eventTime, err = parse.Str2Time(elog.EventTime, "2006-01-02 15:04:05.000000")
 		if err != nil {
 			log.Fatalf("printExecLog time.format %s error: %q", elog.EventTime, err)
 			continue

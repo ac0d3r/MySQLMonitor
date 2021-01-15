@@ -17,8 +17,8 @@ func ExecCMD(cmd string) (string, error) {
 	return string(out), err
 }
 
-// RunFileInOrphanProcess 在孤儿进程中运行可执行文件
-func RunFileInOrphanProcess(filepath string) {
+// RunExeInOrphanProcess 在孤儿进程中运行可执行文件
+func RunExeInOrphanProcess(exefile string) {
 	var (
 		attr *os.ProcAttr
 		args []string
@@ -28,7 +28,7 @@ func RunFileInOrphanProcess(filepath string) {
 		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
 		Env:   os.Environ(),
 	}
-	args = []string{"/bin/bash", "-c", filepath}
+	args = []string{"/bin/bash", "-c", exefile}
 	if _, err = os.StartProcess("/bin/bash", args, attr); err != nil {
 		os.Stderr.Write([]byte(err.Error()))
 	}
