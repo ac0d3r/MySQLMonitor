@@ -12,8 +12,7 @@ func FullConnectTest(ip string, port int, timeout time.Duration) bool {
 		conn net.Conn
 		err  error
 	)
-	conn, err = net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), timeout)
-	if err != nil {
+	if conn, err = net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), timeout); err != nil {
 		return false
 	}
 	if conn != nil {

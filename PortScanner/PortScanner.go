@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -8,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Buzz2d0/SecTools/pkg"
 	"github.com/Buzz2d0/SecTools/pkg/parse"
 	"github.com/Buzz2d0/SecTools/pkg/tcp"
 )
@@ -25,23 +27,48 @@ const (
 )
 
 var (
+	scanMode  mode
 	threadNum int
-	timeout   time.Duration = 2 * time.Second
+	timeout   time.Duration
 	taskChan  chan target
 	wg        *sync.WaitGroup = &sync.WaitGroup{}
+
+	flagHelp     *bool   = flag.Bool("h", false, "Shows usage options.")
+	flagIPList   *string = flag.String("t", "", "target ip list")
+	flagPortList *string = flag.String("p", "22,80,3306,8080", "target port list")
+	flagSyn      *bool   = flag.Bool("syn", false, "set scan mode with \"syn\"")
+	flagTimeout  *uint   = flag.Uint("timeout", 2, "set connent timeout")
 )
 
-func tcpSynConnect(ip string, port int) {
+func initOptions(targetNum int) {
+	// init concurrent quantity
+	if targetNum > 1000 {
+		threadNum = 1000
+	} else {
+		threadNum = targetNum
+	}
+	taskChan = make(chan target, threadNum)
+	timeout = time.Duration(*flagTimeout) * time.Second
+	if *flagSyn {
+		fmt.Println("\033[91m not support syn")
+		os.Exit(0)
+		scanMode = syn
+		// check run with root
+		if !pkg.IsRoot() {
+			fmt.Println("\033[91m must run with root!")
+			os.Exit(1)
+		}
+	} else {
+		scanMode = full
+	}
 
 }
 
 func genTasks(ipList []net.IP, portList []int) {
-	wg.Add(1)
 	defer func() {
 		wg.Done()
 		close(taskChan)
 	}()
-
 	for _, ip := range ipList {
 		for _, port := range portList {
 			taskChan <- target{ip.String(), port}
@@ -51,7 +78,6 @@ func genTasks(ipList []net.IP, portList []int) {
 
 func scan(mod mode) {
 	worker := func() {
-		wg.Add(1)
 		defer wg.Done()
 
 		for t := range taskChan {
@@ -63,31 +89,30 @@ func scan(mod mode) {
 		}
 	}
 	for i := 0; i < threadNum; i++ {
+		wg.Add(1)
 		go worker()
 	}
 }
 
 func main() {
-	if len(os.Args) != 3 {
-		log.Fatalln("Input Ips and Ports")
+	flag.Parse()
+	if *flagHelp || *flagIPList == "" {
+		fmt.Printf("Usage: PortScanner [options]\n\n")
+		flag.PrintDefaults()
+		return
 	}
-	ipList, err := parse.GetIPList(os.Args[1])
+	ipList, err := parse.GetIPList(*flagIPList)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	portList, err := parse.GetPorts(os.Args[2])
+	portList, err := parse.GetPorts(*flagPortList)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	// init concurrent quantity
-	if len(ipList) > 1000 {
-		threadNum = 1000
-	} else {
-		threadNum = len(ipList) / 2
-	}
-	taskChan = make(chan target, threadNum)
 	// run
+	initOptions(len(ipList))
+	wg.Add(1)
 	go genTasks(ipList, portList)
-	scan(full)
+	scan(scanMode)
 	wg.Wait()
 }
