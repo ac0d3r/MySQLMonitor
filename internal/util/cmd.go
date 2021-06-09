@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bufio"
 	"os"
 	"os/exec"
 )
@@ -32,4 +33,42 @@ func RunExeInOrphanProcess(exefile string) {
 	if _, err = os.StartProcess("/bin/bash", args, attr); err != nil {
 		os.Stderr.Write([]byte(err.Error()))
 	}
+}
+
+type HandlerFunc func(string)
+
+func StartCmd(cmd *exec.Cmd, outFunc, errFunc HandlerFunc, deferFunc func()) error {
+	outPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	errPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	bufOut := bufio.NewReader(outPipe)
+	bufErr := bufio.NewReader(errPipe)
+	go func() {
+		defer deferFunc()
+		for {
+			line, _, err := bufOut.ReadLine()
+			if err != nil {
+				break
+			}
+			outFunc(string(line))
+		}
+	}()
+	go func() {
+		for {
+			line, _, err := bufErr.ReadLine()
+			if err != nil {
+				break
+			}
+			errFunc(string(line))
+		}
+	}()
+	return nil
 }
