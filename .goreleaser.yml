@@ -1,6 +1,6 @@
 builds:
-  - binary: 0xdnsRebind
-    main: 0xdnsRebind.go
+  - binary: MySQLMonitor
+    main: MySQLMonitor.go
     goos:
       - linux
       - windows
