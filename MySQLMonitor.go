@@ -9,11 +9,10 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"time"
 
-	"github.com/Buzz2d0/SecTools/internal/parse"
-	"github.com/Buzz2d0/SecTools/internal/util"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -49,17 +48,19 @@ func banner() {
 }
 
 func main() {
+	banner()
+
+	if runtime.GOOS != "windows" && !isRoot() {
+		log.Fatalln("run as a user with root! Thx:)")
+	}
+
 	flag.Parse()
 	if *flagHelp || *flagUser == "" {
 		fmt.Println("Usage: MySQLMonitor [options]")
 		flag.PrintDefaults()
 		return
 	}
-	if !util.IsRoot() {
-		log.Fatalln("run as a user with root! Thx:)")
-	}
 
-	banner()
 	if err := initDB(); err != nil {
 		log.Fatalf("initDB error: %s", err)
 	}
@@ -156,7 +157,7 @@ LOOP:
 			handle := func(line string) {
 				if strings.Contains(line, "Execute") || strings.Contains(line, "Query") {
 					lines := strings.Split(line, "\t")
-					t, err := parse.Str2Time(lines[0], "2006-01-02T15:04:05Z")
+					t, err := str2Time(lines[0], "2006-01-02T15:04:05Z")
 					if err == nil {
 						fmt.Printf("[%s] %s\n", t.In(cstZone).Format("15:04:05"), lines[2])
 					} else {
@@ -193,4 +194,22 @@ func linePrinter(r io.Reader, call func(string)) error {
 			return err
 		}
 	}
+}
+
+// util part
+
+func str2Time(timestr string, format string) (time.Time, error) {
+	var (
+		t   time.Time
+		err error
+	)
+	t, err = time.Parse(format, timestr)
+	if err != nil {
+		return t, err
+	}
+	return t, nil
+}
+
+func isRoot() bool {
+	return os.Geteuid() == 0
 }
