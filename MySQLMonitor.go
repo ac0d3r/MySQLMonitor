@@ -14,6 +14,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gookit/color"
 )
 
 var (
@@ -28,6 +29,10 @@ var (
 	logfile string
 	db      *sql.DB
 	cstZone = time.FixedZone("CST", 8*3600)
+
+	Yellow     = color.Yellow.Render
+	Cyan       = color.Cyan.Render
+	LightGreen = color.Style{color.Green, color.OpBold}.Render
 )
 
 func banner() {
@@ -146,25 +151,29 @@ func watchdog() {
 		log.Fatalf("'%s' File.Seek(0,2) error: %s", logfile, err)
 	}
 
+	// make handle
+	//	Time	Id Command	Argument
+	handle := func(line string) {
+		if strings.Contains(line, "Execute") || strings.Contains(line, "Query") {
+			lines := strings.Split(line, "\t")
+			t, err := str2Time(lines[0], "2006-01-02T15:04:05Z")
+			if err == nil {
+				lines[0] = t.In(cstZone).Format("15:04:05")
+			}
+			c := strings.Split(strings.TrimSpace(lines[1]), " ")[1]
+			fmt.Printf("%s -> [%s] `%s`\n", Yellow(c), Cyan(lines[0]), LightGreen(lines[2]))
+		}
+	}
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 LOOP:
+
 	for {
 		select {
 		case <-quit:
 			break LOOP
 		default:
-			handle := func(line string) {
-				if strings.Contains(line, "Execute") || strings.Contains(line, "Query") {
-					lines := strings.Split(line, "\t")
-					t, err := str2Time(lines[0], "2006-01-02T15:04:05Z")
-					if err == nil {
-						fmt.Printf("[%s] %s\n", t.In(cstZone).Format("15:04:05"), lines[2])
-					} else {
-						fmt.Printf("[%s] %s\n", lines[0], lines[2])
-					}
-				}
-			}
 			if err := linePrinter(f, handle); err != nil {
 				log.Printf("linePrinter error: %s \n", err)
 				break LOOP
@@ -183,9 +192,8 @@ func linePrinter(r io.Reader, call func(string)) error {
 		if c == 0 {
 			return nil
 		}
-		lines := bytes.Split(buf[:c], lineSep)
-		for i := range lines {
-			call(string(lines[i]))
+		for _, line := range bytes.Split(buf[:c], lineSep) {
+			call(string(line))
 		}
 		switch {
 		case err == io.EOF:
