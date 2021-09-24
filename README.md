@@ -1,5 +1,5 @@
 #  MySQLMonitor
-> 监控 MySQL 并实时打印执行语句 🤖️
+> 监控 MySQL 实时打印执行语句 🤖️
 
 - 监控 `general_log_file` 日志文件（效率高，结果准确，不会遗漏执行语句） 🚀
 - 结束时会关闭 general_log 并且清空日志文件 🙈
