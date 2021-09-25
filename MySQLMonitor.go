@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,13 +27,16 @@ var (
 )
 
 var (
-	logfile string
-	db      *sql.DB
-	cstZone = time.FixedZone("CST", 8*3600)
-
+	// color
 	Yellow     = color.Yellow.Render
 	Cyan       = color.Cyan.Render
 	LightGreen = color.Style{color.Green, color.OpBold}.Render
+)
+
+var (
+	logfile string
+	db      *sql.DB
+	cstZone = time.FixedZone("CST", 8*3600)
 )
 
 func banner() {
@@ -74,6 +78,9 @@ func main() {
 		if err := cleanGenerakLog(); err != nil {
 			log.Printf("cleanGenerakLog error: %s \n", err)
 		}
+		if err := closeLogRaw(); err != nil {
+			log.Printf("closeLogRaw error: %s \n", err)
+		}
 		if err := db.Close(); err != nil {
 			log.Printf("close database connection error: %s \n", err)
 		}
@@ -83,6 +90,9 @@ func main() {
 	fmt.Println("start mysql monitor ...")
 	if err := setMySQLLogOutput(); err != nil {
 		log.Fatalf("setMySQLLogOutput error: %s", err)
+	}
+	if err := openLogRaw(); err != nil {
+		log.Fatalf("openLogRaw error: %s", err)
 	}
 
 	watchdog()
@@ -97,6 +107,45 @@ func initDB() error {
 
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(10)
+	return nil
+}
+
+func catMySQLVersion() (string, error) {
+	var version string
+	row := db.QueryRow("SELECT version();")
+	if err := row.Scan(&version); err != nil {
+		return "", err
+	}
+	return version, nil
+}
+
+func openLogRaw() error {
+	version, err := catMySQLVersion()
+	if err != nil {
+		return err
+	}
+	vs := strings.Split(version, ".")
+	if len(vs) < 1 {
+		return fmt.Errorf("mysql version '%s' ", version)
+	}
+
+	if v, err := strconv.Atoi(vs[0]); err != nil {
+		return err
+	} else if v < 8 {
+		return nil
+	}
+	// sett log_raw=1
+	if _, err := db.Exec("SET GLOBAL log_raw = 'ON'"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func closeLogRaw() error {
+	// sett log_raw=0
+	if _, err := db.Exec("SET GLOBAL log_raw = 'OFF'"); err != nil {
+		return err
+	}
 	return nil
 }
 
