@@ -1,4 +1,4 @@
-module github.com/Buzz2d0/MySQLMonitor
+module github.com/ac0d3r/MySQLMonitor
 
 go 1.16
 
